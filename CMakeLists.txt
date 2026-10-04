@@ -6,6 +6,8 @@ set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 add_definitions(-DSTM32F1)
 
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR arm)
 project(stm32_template)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)

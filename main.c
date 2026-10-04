@@ -1,38 +1,72 @@
 #include <stdint.h>
-#include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/timer.h>
-#include <libopencmsis/core_cm3.h>
+#include "stm32f10x.h"
 
-void delay(uint32_t ticks) {
-	for (int i=0; i<ticks; i++) {
-		__asm("nop");
-	}
+void delay_us(uint32_t us) {
+    __asm volatile (
+        "push {r0}\r\n"
+        "mov R0, %0\r\n"
+        "_loop:\r\n"
+        "cmp R0, #0\r\n"
+        "beq _exit\r\n"
+        "sub R0, R0, #1\r\n"
+        "nop\r\n"
+        "b _loop\r\n"
+        "_exit:\r\n"
+        "pop {r0}\r\n"
+        :: "r"(9 * us)
+    );
 }
 
-void TIM2_IRQHandler(void) {
-//void tim2_isr(void) {
-   gpio_toggle(GPIOC, GPIO13);
-   timer_clear_flag(TIM2, TIM_SR_UIF);
-}
+int main(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPAEN;
 
-int __attribute((noreturn)) main(void) {
-rcc_clock_setup_pll(&rcc_hse_configs[RCC_CLOCK_HSE8_72MHZ]);
-rcc_periph_clock_enable(RCC_GPIOC);
-gpio_set_mode(GPIOC, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
+    GPIOC->CRH = GPIOC->CRH & ~(GPIO_CRH_CNF13 | GPIO_CRH_MODE13) | GPIO_CRH_MODE13_0;
+    GPIOC->ODR |= GPIO_ODR_ODR13;
 
-rcc_periph_clock_enable(RCC_TIM2);
-rcc_periph_reset_pulse(RST_TIM2);
-timer_set_mode(TIM2, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-timer_set_prescaler(TIM2, 719);
-timer_disable_preload(TIM2);
-timer_set_period(TIM2, 50000);
-timer_enable_irq(TIM2, TIM_DIER_UIE);
+    GPIOA->CRL = GPIOA->CRL & ~(GPIO_CRL_CNF0 | GPIO_CRL_MODE0) | GPIO_CRL_CNF0_1;
+    GPIOA->ODR |= GPIO_ODR_ODR0;
 
-nvic_enable_irq(NVIC_TIM2_IRQ);
-nvic_clear_pending_irq(NVIC_TIM2_IRQ);
-timer_enable_counter(TIM2);
+    GPIOA->CRL = GPIOA->CRL & ~(GPIO_CRL_CNF1 | GPIO_CRL_MODE1) | GPIO_CRL_CNF1_1;
+    GPIOA->ODR |= GPIO_ODR_ODR1;
 
-while (1) {__asm volatile ("nop");}
+    uint32_t half = 500000;
 
+    const uint32_t HALF_MIN = 7812;
+    const uint32_t HALF_MAX = 32000000;
+
+    while (1) {
+        if (!(GPIOA->IDR & GPIO_IDR_IDR0)) {
+
+            if (half > HALF_MIN) {
+                half /= 2;
+
+                if (half < HALF_MIN)
+                    half = HALF_MIN;
+            }
+
+            delay_us(20000);
+            while (!(GPIOA->IDR & GPIO_IDR_IDR0));
+            delay_us(20000);
+        }
+
+        if (!(GPIOA->IDR & GPIO_IDR_IDR1)) {
+            
+            if (half < HALF_MAX) {
+                half *= 2;
+
+                if (half > HALF_MAX)
+                    half = HALF_MAX;
+            }
+
+            delay_us(20000);
+            while (!(GPIOA->IDR & GPIO_IDR_IDR1));
+            delay_us(20000);
+        }
+
+        GPIOC->ODR &= ~GPIO_ODR_ODR13;
+        delay_us(half);
+
+        GPIOC->ODR |= GPIO_ODR_ODR13;
+        delay_us(half);
+    }
 }
