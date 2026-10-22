@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 # Disable compiler checking
 # Otherwise it will fall with `reference to _exit() not found` error
@@ -8,7 +8,11 @@ add_definitions(-DSTM32F1)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR arm)
-project(stm32_template)
+
+set(CMAKE_C_COMPILER arm-none-eabi-gcc)
+set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
+
+project(stm32_template C)
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS)
@@ -50,6 +54,7 @@ add_definitions(-DSTM32F10X_MD)
 
 include_directories(cmsis)
 include_directories(stm32)
+include_directories(spi1)
 
 include(ExternalProject)
 ExternalProject_Add(opencm3_build SOURCE_DIR ${OPENCM3_PATH}
@@ -65,6 +70,7 @@ set(SOURCE_FILES
     stm32/startup/startup_stm32f10x_md.c # Choose startup file for your MCU
     stm32/system_stm32f10x.c
     syscalls/syscalls.c
+    spi1/spi1.c
     main.c)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/.gdbinit DESTINATION ${EXECUTABLE_OUTPUT_PATH})
@@ -105,3 +111,4 @@ add_custom_command(OUTPUT flash_target
         DEPENDS ${BIN_TARGET})
 
 add_custom_target(flash DEPENDS flash_target)
+>>>>>>> 7c8eac0 (Complete practice 4)

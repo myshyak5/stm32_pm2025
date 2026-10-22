@@ -1,72 +1,113 @@
 #include <stdint.h>
 #include "stm32f10x.h"
+#include "spi1.h"
 
-void delay_us(uint32_t us) {
-    __asm volatile (
-        "push {r0}\r\n"
-        "mov R0, %0\r\n"
-        "_loop:\r\n"
-        "cmp R0, #0\r\n"
-        "beq _exit\r\n"
-        "sub R0, R0, #1\r\n"
-        "nop\r\n"
-        "b _loop\r\n"
-        "_exit:\r\n"
-        "pop {r0}\r\n"
-        :: "r"(9 * us)
-    );
+
+void display_cmd(uint8_t cmd) {
+    GPIOA->ODR &= ~GPIO_ODR_ODR4;
+    GPIOA->ODR &= ~GPIO_ODR_ODR1;
+
+    SPI1_Write(cmd);
+
+    while (!(SPI1->SR & SPI_SR_TXE));
+    while (SPI1->SR & SPI_SR_BSY);
+
+    GPIOA->ODR |= GPIO_ODR_ODR4;
+}
+
+void display_data(uint8_t data) {
+    GPIOA->ODR &= ~GPIO_ODR_ODR4;
+    GPIOA->ODR |= GPIO_ODR_ODR1;
+
+    SPI1_Write(data);
+
+    while (!(SPI1->SR & SPI_SR_TXE));
+    while (SPI1->SR & SPI_SR_BSY);
+
+    GPIOA->ODR |= GPIO_ODR_ODR4;
+}
+
+void display_init(void) {
+    GPIOA->ODR &= ~GPIO_ODR_ODR2;
+
+    for (volatile uint32_t i = 0; i < 100000; i++) {
+        __NOP();
+    }
+
+    GPIOA->ODR |= GPIO_ODR_ODR2;
+
+    for (volatile uint32_t i = 0; i < 100000; i++) {
+        __NOP();
+    }
+
+    display_cmd(0xAE);
+
+    display_cmd(0xD5);
+    display_cmd(0x80);
+
+    display_cmd(0xA8);
+    display_cmd(0x3F);
+
+    display_cmd(0xD3);
+    display_cmd(0x00);
+
+    display_cmd(0x40);
+
+    display_cmd(0x8D);
+    display_cmd(0x14);
+
+    display_cmd(0x20);
+    display_cmd(0x00);
+
+    display_cmd(0xA1);
+    display_cmd(0xC8);
+
+    display_cmd(0xDA);
+    display_cmd(0x12);
+
+    display_cmd(0x81);
+    display_cmd(0x7F);
+
+    display_cmd(0xD9);
+    display_cmd(0xF1);
+
+    display_cmd(0xDB);
+    display_cmd(0x40);
+
+    display_cmd(0xA4);
+    display_cmd(0xA6);
+
+    display_cmd(0xAF);
+}
+
+void display_chessboard(void) {
+    display_cmd(0x21);
+    display_cmd(0x00);
+    display_cmd(0x7F);
+
+    display_cmd(0x22);
+    display_cmd(0x00);
+    display_cmd(0x07);
+
+    for (uint8_t page = 0; page < 8; page++) {
+        for (uint8_t col = 0; col < 128; col++) {
+            if ((page + col / 8) % 2 == 0) {
+                display_data(0xFF);
+            }
+            else {
+                display_data(0x00);
+            }
+        }
+    }
 }
 
 int main(void) {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPAEN;
+    SPI1_Init();
 
-    GPIOC->CRH = GPIOC->CRH & ~(GPIO_CRH_CNF13 | GPIO_CRH_MODE13) | GPIO_CRH_MODE13_0;
-    GPIOC->ODR |= GPIO_ODR_ODR13;
+    display_init();
 
-    GPIOA->CRL = GPIOA->CRL & ~(GPIO_CRL_CNF0 | GPIO_CRL_MODE0) | GPIO_CRL_CNF0_1;
-    GPIOA->ODR |= GPIO_ODR_ODR0;
+    display_chessboard();
 
-    GPIOA->CRL = GPIOA->CRL & ~(GPIO_CRL_CNF1 | GPIO_CRL_MODE1) | GPIO_CRL_CNF1_1;
-    GPIOA->ODR |= GPIO_ODR_ODR1;
-
-    uint32_t half = 500000;
-
-    const uint32_t HALF_MIN = 7812;
-    const uint32_t HALF_MAX = 32000000;
-
-    while (1) {
-        if (!(GPIOA->IDR & GPIO_IDR_IDR0)) {
-
-            if (half > HALF_MIN) {
-                half /= 2;
-
-                if (half < HALF_MIN)
-                    half = HALF_MIN;
-            }
-
-            delay_us(20000);
-            while (!(GPIOA->IDR & GPIO_IDR_IDR0));
-            delay_us(20000);
-        }
-
-        if (!(GPIOA->IDR & GPIO_IDR_IDR1)) {
-            
-            if (half < HALF_MAX) {
-                half *= 2;
-
-                if (half > HALF_MAX)
-                    half = HALF_MAX;
-            }
-
-            delay_us(20000);
-            while (!(GPIOA->IDR & GPIO_IDR_IDR1));
-            delay_us(20000);
-        }
-
-        GPIOC->ODR &= ~GPIO_ODR_ODR13;
-        delay_us(half);
-
-        GPIOC->ODR |= GPIO_ODR_ODR13;
-        delay_us(half);
-    }
+    while (1);
+>>>>>>> 7c8eac0 (Complete practice 4)
 }
