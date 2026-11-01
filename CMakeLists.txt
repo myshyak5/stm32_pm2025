@@ -111,4 +111,3 @@ add_custom_command(OUTPUT flash_target
         DEPENDS ${BIN_TARGET})
 
 add_custom_target(flash DEPENDS flash_target)
->>>>>>> 7c8eac0 (Complete practice 4)

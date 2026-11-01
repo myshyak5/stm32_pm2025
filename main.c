@@ -109,5 +109,4 @@ int main(void) {
     display_chessboard();
 
     while (1);
->>>>>>> 7c8eac0 (Complete practice 4)
 }
